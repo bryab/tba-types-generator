@@ -9,6 +9,17 @@ logger = logging.getLogger(__name__)
 HARMONY_DOC_PAT = "https://docs.toonboom.com/help/harmony-{0}/scripting/extended/index.html"
 
 
+def get_classes(version_num: int):
+    url = HARMONY_DOC_PAT.format(version_num)
+    base_url = '/'.join(url.split('/')[:-1])
+    html = get_url(url)
+    classes = _parse_index(html)
+    for class_data in classes:
+        class_url = f"{base_url}/{class_data['url']}"
+        class_html = get_url(class_url)
+        yield class_data
+
+
 def _parse_index(html: str):
     soup = BeautifulSoup(html, 'html.parser')
 
@@ -143,15 +154,15 @@ def _parse_class(html: str):
     return class_data
 
 
-if __name__ == "__main__":
-    url = HARMONY_DOC_PAT.format(21)
-    base_url = '/'.join(url.split('/')[:-1])
-    html = get_url(url)
-    classes = _parse_index(html)
-    for class_data in classes:
-        class_url = f"{base_url}/{class_data['url']}"
-        class_html = get_url(class_url)
-        class_data.update(_parse_class(class_html))
+# if __name__ == "__main__":
+#     url = HARMONY_DOC_PAT.format(21)
+#     base_url = '/'.join(url.split('/')[:-1])
+#     html = get_url(url)
+#     classes = _parse_index(html)
+#     for class_data in classes:
+#         class_url = f"{base_url}/{class_data['url']}"
+#         class_html = get_url(class_url)
+#         class_data.update(_parse_class(class_html))
 
-    for class_data in classes:
-        logger.debug(json5.dumps(class_data, indent=4))
+#     for class_data in classes:
+#         logger.debug(json5.dumps(class_data, indent=4))

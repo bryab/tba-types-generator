@@ -109,6 +109,10 @@ def get_class_name_from_url(url):
     return re.search(r"class(\w+)\.html", url.split('/').pop()).group(1)
 
 
+def get_classes(host, version_num):
+    return iter_class_htmls(host, version_num)
+
+
 def iter_class_htmls(host, version_num):
     if host == 'harmony':
         hierarchy_url = get_harmony_hierarchy_url(version_num)

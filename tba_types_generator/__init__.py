@@ -3,7 +3,8 @@ import json
 import typing
 from .typescript_builder import write_ts_from_class
 import subprocess
-from .parser.tba_parser import iter_class_htmls
+from .parser.tba_parser import get_classes as get_core_classes
+from .parser.tba_extended_parser import get_classes as get_extended_classes
 import logging
 
 logger = logging.getLogger(__name__)
@@ -76,11 +77,16 @@ def _generate_ts_from_data(host: str, version_num: str, all_classes: typing.Iter
 #         with open(filepath, 'rb') as f:
 #             yield json.load(f)
 
+def get_all_classes(host, version_num):
+    yield from get_core_classes(host, version_num)
+    if host == "harmony":
+        yield from get_extended_classes(version_num)
+
 
 def generate(host, version_num):
     logger.info(f"Generating Typescript for {host}:{version_num}")
     _generate_ts_from_data(
-        host, version_num, iter_class_htmls(host, version_num))
+        host, version_num, get_all_classes(host, version_num))
 
 # def generate_from_json():
 #     versions = ["harmony15","harmony16","harmony17","harmony20","harmony21","harmony22","sbpro7","sbpro20","sbpro22"]
