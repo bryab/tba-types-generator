@@ -12,7 +12,7 @@ def _convert_single_type(type_name):
     # FIXME: May want static (but is not part of type in TS)
     type_name = type_name.replace("virtual", "").replace("static", "")
     type_name = type_name.strip()
-    if "unsigned" in type_name:
+    if "unsigned" in type_name or type_name == "integer":
         type_name = "int"
     if not type_name:
         type_name = "void"
@@ -127,6 +127,12 @@ def build_params_list(slot):
         param_type = build_type(p)
         params.append((param_name, param_type))
     return params
+
+
+def write_ts_from_interface(data: dict, f: typing.TextIO):
+    type_str = build_type(data)
+    write_jsdoc(f, data)
+    f.write(f"\ndeclare interface {data['name']} {type_str}")
 
 
 def write_ts_from_class(cls: dict, f: typing.TextIO):

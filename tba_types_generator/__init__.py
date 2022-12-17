@@ -1,10 +1,11 @@
 import os
 import json
 import typing
-from .typescript_builder import write_ts_from_class
+from .typescript_builder import write_ts_from_class, write_ts_from_interface
 import subprocess
 from .parser.tba_parser import get_classes as get_core_classes
 from .parser.tba_extended_parser import get_classes as get_extended_classes
+from .parser.tba_extended_parser import get_globals as get_extended_globals
 import logging
 
 logger = logging.getLogger(__name__)
@@ -29,7 +30,7 @@ def prettify(filename):
     subprocess.call(['prettier', '--write', filename])
 
 
-def _generate_ts_from_data(host: str, version_num: str, all_classes: typing.Iterator[dict]):
+def _generate_ts_from_data(host: str, version_num: str, all_classes: typing.Iterator[dict], all_globals: typing.Iterator[dict]):
     extra_file_data = _load_extra_ts_files()
 
     ts_dir = os.path.join(os.path.expanduser(
@@ -56,10 +57,16 @@ def _generate_ts_from_data(host: str, version_num: str, all_classes: typing.Iter
             logger.debug(f"Writing class: {class_data['name']}")
             write_ts_from_class(class_data, ts_file)
 
+        for global_data in all_globals:
+            write_ts_from_interface(global_data, ts_file)
+
         ts_file.write('\n\n\n')
         if host == 'harmony':
             logger.debug("Writing harmony-specific add-ons")
             ts_file.write(extra_file_data['harmony_post'])
+
+            if version_num >= 20:
+                ts_file.write(extra_file_data['preamble_harmony_extended'])
 
     prettify(ts_filename)
 
@@ -83,10 +90,16 @@ def get_all_classes(host, version_num):
         yield from get_extended_classes(version_num)
 
 
+def get_all_globals(host, version_num):
+    if host == "harmony" and version_num >= 20:
+        return get_extended_globals(version_num)
+    return []
+
+
 def generate(host, version_num):
     logger.info(f"Generating Typescript for {host}:{version_num}")
     _generate_ts_from_data(
-        host, version_num, get_all_classes(host, version_num))
+        host, version_num, get_all_classes(host, version_num), get_all_globals(host, version_num))
 
 # def generate_from_json():
 #     versions = ["harmony15","harmony16","harmony17","harmony20","harmony21","harmony22","sbpro7","sbpro20","sbpro22"]

@@ -7,6 +7,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 HARMONY_DOC_PAT = "https://docs.toonboom.com/help/harmony-{0}/scripting/extended/index.html"
+HARMONY_DOC_PAT_GLOBALS = "https://docs.toonboom.com/help/harmony-{0}/scripting/extended/global.html"
 
 
 def get_classes(version_num: int):
@@ -18,7 +19,15 @@ def get_classes(version_num: int):
         class_url = f"{base_url}/{class_data['url']}"
         class_html = get_url(class_url)
         class_data = _parse_class(class_html)
+        class_data['url'] = class_url
         yield class_data
+
+
+def get_globals(version_num: int):
+    url = HARMONY_DOC_PAT_GLOBALS.format(version_num)
+    html = get_url(url)
+    harmony_globals = _parse_globals(html)
+    return harmony_globals
 
 
 def _parse_index(html: str):
@@ -57,6 +66,11 @@ def _parse_method_name(txt: str):
 def _parse_type(txt: str):
     if txt == "Array":
         return "any[]"
+    if txt == "function":
+        return "(...args: any[]) => any"
+    if txt == "boolean | function":
+        return "boolean | (...args: any[]) => boolean"
+    assert not "boolean" in txt
     # FIXME: Too lazy to write a proper parser; just check for 2d array
     match = re.search(r"Array\.\<Array\.\<(.+?)\>\>", txt)
     if match:
@@ -193,15 +207,26 @@ def _parse_class(html: str):
     return class_data
 
 
-# if __name__ == "__main__":
-#     url = HARMONY_DOC_PAT.format(21)
-#     base_url = '/'.join(url.split('/')[:-1])
-#     html = get_url(url)
-#     classes = _parse_index(html)
-#     for class_data in classes:
-#         class_url = f"{base_url}/{class_data['url']}"
-#         class_html = get_url(class_url)
-#         class_data.update(_parse_class(class_html))
+def _parse_globals(html: str):
+    """
+        Only deals with interfaces
+    """
+    soup = BeautifulSoup(html, 'html.parser')
+    harmony_globals = []
+    article = soup.find('article')
 
-#     for class_data in classes:
-#         logger.debug(json5.dumps(class_data, indent=4))
+    for h4 in article.find_all('h4', {'class': 'name'}):
+        global_name = h4.text.strip()
+        props_table = h4.find_next_sibling('table')
+        tbody = props_table.find('tbody')
+        schema = _parse_schema_table(tbody)
+
+        desc_div = props_table.find_next_sibling(
+            'div', {'class': 'description'})
+        harmony_globals.append({
+            'name': global_name,
+            'object_schema': schema,
+            'desc': desc_div.text.strip()
+        })
+
+    return harmony_globals
