@@ -133,6 +133,9 @@ def write_ts_from_class(cls: dict, f: typing.TextIO):
     is_module = cls.get('is_namespace', False)
     is_static = not 'parent' in cls or cls['parent'] in [
         'GlobalObject', 'BAPP_SpecialFolders']
+    has_namespace = cls.get('namespace', None) != None
+    if has_namespace:
+        f.write('\ndeclare namespace {} {{'.format(cls['namespace']))
     static_str = ""
     if is_static:
         static_str = "static "
@@ -144,11 +147,14 @@ def write_ts_from_class(cls: dict, f: typing.TextIO):
         # if cls['name'] == 'File':
         #     f.write('\ndeclare interface {} extends {} {{'.format(cls['name'], cls['parent']))
         # else:
+        declare_prefix = 'declare '
+        if has_namespace:
+            declare_prefix = ''
         if cls.get('parent', None):
-            f.write('\ndeclare class {} extends {} {{'.format(
-                cls['name'], cls['parent']))
+            f.write('\n{}class {} extends {} {{'.format(declare_prefix,
+                                                        cls['name'], cls['parent']))
         else:
-            f.write('\ndeclare class {} {{'.format(cls['name']))
+            f.write('\n{}class {} {{'.format(declare_prefix, cls['name']))
     used_names = []
     for slot in cls['slots']:
         if slot['name'].startswith('~'):
@@ -186,7 +192,7 @@ def write_ts_from_class(cls: dict, f: typing.TextIO):
         type_str = build_signal_type(signal)
         f.write('\n{prefix}public {name}: {type};\n'.format(
             prefix=prefix, name=signal['name'], type=type_str))
-    for prop in cls['props']:
+    for prop in cls.get('props', []):
         prefix = ''
         if prop['name'] in RESERVED_WORDS:
             prefix = "// /* Invalid - Reserved word */"
@@ -202,4 +208,6 @@ def write_ts_from_class(cls: dict, f: typing.TextIO):
         else:
             f.write('\n{prefix}{static}{name}: {type};\n'.format(
                 prefix=prefix, static=static_str, name=prop['name'], type=type_str))
+    if has_namespace:
+        f.write('\n}')
     f.write("\n}\n\n")

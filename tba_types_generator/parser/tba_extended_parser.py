@@ -17,6 +17,7 @@ def get_classes(version_num: int):
     for class_data in classes:
         class_url = f"{base_url}/{class_data['url']}"
         class_html = get_url(class_url)
+        class_data = _parse_class(class_html)
         yield class_data
 
 
@@ -45,11 +46,28 @@ def _parse_keyword(txt: str):
         return ""
     return re.search(r"\((.+)\)", txt).group(1)
 
+
+def _parse_method_name(txt: str):
+    return txt.split(" ").pop()
+
 # def _parse_signature(txt: str):
 #     return
 
-# def _parse_method_type(txt: str):
-#     return re.search(r"\{(.+)\}").group(1)
+
+def _parse_type(txt: str):
+    if txt == "Array":
+        return "any[]"
+    # FIXME: Too lazy to write a proper parser; just check for 2d array
+    match = re.search(r"Array\.\<Array\.\<(.+?)\>\>", txt)
+    if match:
+        return f"{match.group(1)}[][]"
+    match = re.search(r"Array\.\<(.+?)\>", txt)
+    if match:
+        return f"{match.group(1)}[]"
+    match = re.search(r"Object\.\<(.+?), (.+?)>", txt)
+    if match:
+        return f"{{[key: {match.group(1)}] : {match.group(2)}}}"
+    return txt
 
 
 def _parse_schema_table(tbody):
@@ -62,7 +80,7 @@ def _parse_schema_table(tbody):
         description_td = tr.find(
             'td', {'class': 'description'}, recursive=False)
         field_name = name_td.text.strip()
-        field_type = type_td.text.strip()
+        field_type = _parse_type(type_td.text.strip())
         try:
             field_desc = description_td.contents[0].text.strip()
         except IndexError:
@@ -87,6 +105,13 @@ def _parse_class(html: str):
         'desc': ""
     }
     soup = BeautifulSoup(html, 'html.parser')
+    title_h1 = soup.find('h1', {'class': 'page-title'})
+    class_name = title_h1.text.strip()
+    if "/" in class_name:
+        class_data['namespace'], class_data['name'] = tuple(
+            class_name.split("/"))
+    else:
+        class_data['name'] = class_name
     article = soup.find('article')
     container_overview = article.find(
         'div', {'class': 'container-overview'}, recursive=False)
@@ -100,6 +125,7 @@ def _parse_class(html: str):
         method_keyword, method_name, _, _ = tuple(
             (h.text.strip() for h in h4.contents))
         method_keyword = _parse_keyword(method_keyword)
+        method_name = _parse_method_name(method_name)
         logger.debug(f"Keyword: {method_keyword}, Name: {method_name}")
         method_desc_div = h4.find_next_sibling('div', {'class': 'description'})
         if method_desc_div:
@@ -110,34 +136,37 @@ def _parse_class(html: str):
             'name': method_name,
             'keyword': method_keyword,
             'desc': method_desc,
+            'params': [],
+            'type': ""
         }
         class_data['slots'].append(method_dict)
 
         h5 = h4.find_next_sibling('h5')
         example_p = h5.find_next_sibling('p')
         if example_p:
-            example_desc = example_p.text
+            # example_desc = example_p.text
             example_code_pre = h5.find_next_sibling('pre')
             method_dict['example'] = example_code_pre.find('code').text
         parameters_h5 = h5.find_next_sibling('h5')
-        params_list = []
 
         if parameters_h5 and 'Parameters' in parameters_h5.text:
-            method_dict['params'] = []
+            h5 = parameters_h5
             parameters_table = parameters_h5.find_next_sibling(
                 'table', {'class': 'params'})
             parameters_table_body = parameters_table.find(
                 'tbody', recursive=False)
             for tr in parameters_table_body.find_all('tr', recursive=False):
-                tmp = list(tr.find_all('td'))
+                # tmp = list(tr.find_all('td'))
                 name_td = tr.find('td', {'class': 'name'}, recursive=False)
                 type_td = tr.find('td', {'class': 'type'}, recursive=False)
                 attr_td = tr.find(
                     'td', {'class': 'attributes'}, recursive=False)
+                if attr_td:
+                    logger.debug(f"Atr: {attr_td}")
                 description_td = tr.find(
                     'td', {'class': 'description'}, recursive=False)
                 param_name = name_td.text.strip()
-                param_type = type_td.text.strip()
+                param_type = _parse_type(type_td.text.strip())
                 param_desc = description_td.contents[0].text.strip()
                 param_dict = {
                     'name': param_name,
@@ -151,6 +180,16 @@ def _parse_class(html: str):
                 if param_object_schema_tbody:
                     param_dict['object_schema'] = _parse_schema_table(
                         param_object_schema_tbody)
+
+        return_h5 = h5.find_next_sibling('h5')
+        if return_h5 and 'Returns' in return_h5.text:
+            dl = return_h5.find_next_sibling('dl', {'class': 'param-type'})
+            if dl:
+                return_type_span = dl.find('span', {'class': 'param-type'})
+                method_dict['type'] = _parse_type(
+                    return_type_span.text.strip())
+                assert not 'Array' in method_dict['type']
+                assert not 'Object<' in method_dict['type']
     return class_data
 
 
