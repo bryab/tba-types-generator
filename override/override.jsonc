@@ -1,0 +1,47 @@
+{
+  "classes": {
+    "RemoteCmd": {
+      "parent": null // this class overrides `connect` - need to check if this is actually a subclass of QObject in Harmony
+    },
+    "columnMarkers": {
+      "parent": null // this is labeled as a GlobalObject but is not actually one; not sure what it is - need to check in Harmony
+    },
+    "Model3d": {
+      "parent": null // same as RemoteCmd -- needs investigation
+    }
+  },
+  "slots": {
+    "mkdirs": {
+      "note": "Does not appear to work on Windows paths."
+    },
+    "soundColumn": {
+      "type": "soundColumnInterface"
+    },
+    "typeName": {
+      "type": "AttrValueType"
+    },
+    "setPasteSpecialDrawingFileMode": {
+      "params": [
+        {
+          "name": "mode",
+          "type": "\"NEVER_CREATE\"|\"ONLY_CREATE_IF_DOES_NOT_EXIST\"|\"ALWAYS_CREATE\"|\"ALWAYS_CREATE_AND_VERSION_IF_NECESSARY\""
+        }
+      ]
+    },
+    "setPasteSpecialDrawingAction": {
+      "params": [
+        {
+          "name": "mode",
+          "type": "\"DO_NOTHING\" | \"ADD_OR_REMOVE_EXPOSURE\" | \"UPDATE_PIVOT\""
+        }
+      ]
+    },
+    "sequences": {
+      "type": "soundSequenceInterface[]"
+    },
+    "objectName": {
+      "class_name":"Process",
+      "invalid": true
+    }
+  }
+}
