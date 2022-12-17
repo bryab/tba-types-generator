@@ -2,22 +2,24 @@ from bs4 import BeautifulSoup
 import bs4
 import re
 import json5
-from url_getter import get_url
+from tba_types_generator.url_getter import get_url
 from typing import Tuple, Dict, Optional
 import esprima
 import jsbeautifier
+import logging
+
+logger = logging.getLogger(__name__)
 
 HARMONY_DOC_PAT = 'https://docs.toonboom.com/help/harmony-{0}/scripting/script/hierarchy.js'
 HARMONY_NAMESPACE_PAT = 'https://docs.toonboom.com/help/harmony-{0}/scripting/script/namespaces_dup.js'
 SBPRO_DOC_PAT = 'https://docs.toonboom.com/help/storyboard-pro-{0}/storyboard/scripting/reference/hierarchy.js'
-HARMONY_VERSIONS = [15, 16, 17, 20, 21, 22]
-SBPRO_VERSIONS = [6, 7, 20, 22]
 
 
 def _group_from_labels(labels):
-    if any(l in labels for l in ('read','write')):
+    if any(l in labels for l in ('read', 'write')):
         return 'props'
-    if not labels or any(l in labels for l in ('slot','static', 'virtual','override', 'inline')): # Note - static may be meaningful here
+    # Note - static may be meaningful here
+    if not labels or any(l in labels for l in ('slot', 'static', 'virtual', 'override', 'inline')):
         return 'slots'
     if 'enum' in labels:
         return 'enums'
@@ -26,6 +28,7 @@ def _group_from_labels(labels):
     if 'friend' in labels:
         return None
     raise ValueError(labels)
+
 
 def parse_class_page_detailed(html: str) -> Dict:
     soup = BeautifulSoup(html, 'html.parser')
@@ -44,12 +47,12 @@ def parse_class_page_detailed(html: str) -> Dict:
 
     groups = {}
 
-    #current_group = None
+    # current_group = None
     item: bs4.element.Tag
-    for item in contents_div.find_all('div', {'class':'memitem'}, recursive=False):
+    for item in contents_div.find_all('div', {'class': 'memitem'}, recursive=False):
         labels = _sniff_div_labels(item)
         group_name = _group_from_labels(labels)
-        if not group_name: # Skip invalid items (friends for example)
+        if not group_name:  # Skip invalid items (friends for example)
             continue
 
         if not group_name in groups:
@@ -78,6 +81,7 @@ def get_class_hierarchy(js_url: str):
     tree = _read_elements(js_var.init.elements)
     return tree
 
+
 def get_namespaces(js_url: str):
     # Note - it seems by 'namespaces' they mean global functions.
     # For this reason we just need a list of links here.
@@ -88,8 +92,10 @@ def get_namespaces(js_url: str):
     tree = _read_elements(js_var.init.elements)
     return tree
 
+
 def get_harmony_hierarchy_url(version):
     return HARMONY_DOC_PAT.format(version)
+
 
 def get_harmony_namespace_url(version):
     return HARMONY_NAMESPACE_PAT.format(version)
@@ -112,17 +118,18 @@ def iter_class_htmls(host, version_num):
         base_url = '/'.join(hierarchy_url.split('/')[:-1])
 
     used_names = []  # FIXME: Multiple inheritance???
-
+    logger.debug(f"Loading Class hierarchy from {hierarchy_url}")
     with open('./override/override.jsonc', 'rb') as f:
         override_data = json5.load(f)
 
     def _iter_leaf(parent_name, items):
         for item in items:
             if item.get('url', None):
+                logger.debug(f"Parsing item: {item}")
                 url = '{}/{}'.format(base_url, item['url'])
                 html = get_url(url)
                 if not html:
-                    print("Failed to get: {0}".format(url))
+                    logger.debug("Failed to get: {0}".format(url))
                     continue
                 data = parse_class_page_detailed(html)
                 if '::' in data['name']:  # FIXME
@@ -136,19 +143,23 @@ def iter_class_htmls(host, version_num):
                 if data['name'] in override_data['classes']:
                     override = override_data['classes'][data['name']]
                     data.update(override)
+                    logger.debug(f"Applying override: {override}")
 
                 for slot in data['slots']:
                     if slot['name'] in override_data['slots']:
                         slot_override = override_data['slots'][slot['name']]
                         for key in slot_override:
                             if key not in ('params'):
-                                print("Overriding slot: {0}".format(slot_override))
+                                logger.debug("Overriding slot: {0}".format(
+                                    slot_override))
                                 slot[key] = slot_override[key]
                         if 'params' in slot_override:
                             for param in slot['params']:
-                                param_override = next((p for p in slot_override['params'] if p['name']==param['name']), None)
+                                param_override = next(
+                                    (p for p in slot_override['params'] if p['name'] == param['name']), None)
                                 if param_override:
-                                    print("Overriding param: {}:{}".format(slot['name'], param_override))
+                                    logger.debug("Overriding param: {}:{}".format(
+                                        slot['name'], param_override))
                                     param.update(param_override)
                 yield data
             if 'members' in item:
@@ -161,7 +172,9 @@ def iter_class_htmls(host, version_num):
         tree = get_namespaces(namespace_url)
         yield from _iter_leaf(None, tree)
 
+
 DEFAULT_PARAMETER_VALUE_PAT = r"=(.+)"
+
 
 def _clean_argument_name(txt):
     default_value = None
@@ -177,15 +190,17 @@ def _clean_argument_name(txt):
 
 FUNC_KEYWORD_PAT = r"^(?P<keyword>virtual|static) "
 FUNC_NAMESPACED_NAME_PAT = r"(?:[a-z0-9_]+::)?(?P<name>[~a-z0-9_]+)$"
+
+
 def _clean_function_name(txt):
-    txt = txt.replace("Q_INVOKABLE","")
+    txt = txt.replace("Q_INVOKABLE", "")
     m = re.search(FUNC_KEYWORD_PAT, txt.strip())
     keyword = None
     if m:
         txt = re.sub(FUNC_KEYWORD_PAT, "", txt.strip()).strip()
         keyword = m.group('keyword')
     m = re.search(FUNC_NAMESPACED_NAME_PAT, txt.strip(), flags=re.I)
-    #if m:
+    # if m:
     func_name = m.group('name')
     txt = re.sub(FUNC_NAMESPACED_NAME_PAT, "", txt.strip(), flags=re.I).strip()
     if not txt:
@@ -225,12 +240,12 @@ def _parse_signature_table(signature_table: bs4.element.Tag) -> Dict:
         if td := tr.find('td', {'class': 'memname'}):
             func_data['type'], func_data['name'], func_data['keyword'] = _clean_function_name(
                 td.text)
-                
+
         if td := tr.find('td', {'class': 'paramtype'}):
             param = {}
             param['type'] = _parse_type(td.text)
             td = tr.find('td', {'class': 'paramname'})
-            
+
             argument_name, default_value = _clean_argument_name(td.text)
             if argument_name:
                 param['name'] = argument_name
@@ -248,6 +263,7 @@ def _parse_example_div(e):
         example_lines.append(div.text)
     example = "\n".join(example_lines)
     return jsbeautifier.beautify(example)
+
 
 def _parse_memdoc(doc_div: bs4.element.Tag) -> Dict:
     func_data = {}
@@ -313,15 +329,16 @@ def _sniff_div_labels(div: bs4.element.Tag) -> str:
     """
         Determine whether this div is a slot, signal, prop, enum, etc
     """
-    mlabels = div.find_all('span', {'class':'mlabel'})
+    mlabels = div.find_all('span', {'class': 'mlabel'})
     labels = [l.text.strip() for l in mlabels]
     # Note 'enum' is not usually a real label; but i want to know if an item
     # Is an enum so I have to do some digging.
     if not 'enum' in labels:
-        memname = div.find('td', {'class':'memname'})
+        memname = div.find('td', {'class': 'memname'})
         if memname and 'enum' in memname.text:
             labels.append('enum')
     return labels
+
 
 def _parse_function_div(div: bs4.element.Tag) -> Dict:
     func_data = {
@@ -357,6 +374,7 @@ def _is_namespace(soup: BeautifulSoup) -> bool:
     })
     return 'Namespace' in div.text
 
+
 def _find_class_desc(soup: BeautifulSoup) -> Tuple[str, str]:
     desc = ""
     example = ""
@@ -381,6 +399,7 @@ def _parse_type(type_name):
         as there is useful information in the raw types.
     """
     return type_name.strip()
+
 
 def _read_elements(elements):
     items = []
@@ -409,7 +428,7 @@ if __name__ == "__main__":
     tree = get_class_hierarchy(
         "https://docs.toonboom.com/help/harmony-22/scripting/script/hierarchy.js")
     for item in tree:
-        print(item['name'])
+        logger.debug(item['name'])
         if 'members' in item:
             for subitem in item['members']:
-                print('--'+subitem['name'])
+                logger.debug('--'+subitem['name'])

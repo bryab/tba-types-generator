@@ -1,13 +1,11 @@
 
 from bs4 import BeautifulSoup
-import bs4
 import re
 import json5
-from url_getter import get_url
-from typing import Tuple, Dict, Optional
-import esprima
-import jsbeautifier
+from tba_types_generator.url_getter import get_url
+import logging
 
+logger = logging.getLogger(__name__)
 HARMONY_DOC_PAT = "https://docs.toonboom.com/help/harmony-{0}/scripting/extended/index.html"
 
 
@@ -26,7 +24,7 @@ def _parse_index(html: str):
             class_name = a.text.strip()
             class_url = a['href']
             classes.append(dict(name=class_name, url=class_url))
-            print(f"{class_name}: {class_url}")
+            logger.debug(f"{class_name}: {class_url}")
            # methods_ul = li.find('ul', {'class': 'slots'})
     return classes
 
@@ -41,6 +39,7 @@ def _parse_keyword(txt: str):
 
 # def _parse_method_type(txt: str):
 #     return re.search(r"\{(.+)\}").group(1)
+
 
 def _parse_schema_table(tbody):
     fields = []
@@ -57,7 +56,7 @@ def _parse_schema_table(tbody):
             field_desc = description_td.contents[0].text.strip()
         except IndexError:
             field_desc = ""
-    
+
         field_dict = {
             'name': field_name,
             'type': field_type,
@@ -68,6 +67,7 @@ def _parse_schema_table(tbody):
         if sub_tbody:
             field_dict['object_schema'] = _parse_schema_table(sub_tbody)
     return fields
+
 
 def _parse_class(html: str):
     class_data = {
@@ -89,11 +89,11 @@ def _parse_class(html: str):
         method_keyword, method_name, _, _ = tuple(
             (h.text.strip() for h in h4.contents))
         method_keyword = _parse_keyword(method_keyword)
-        print(f"Keyword: {method_keyword}, Name: {method_name}")
+        logger.debug(f"Keyword: {method_keyword}, Name: {method_name}")
         method_desc_div = h4.find_next_sibling('div', {'class': 'description'})
         if method_desc_div:
             method_desc = method_desc_div.text.strip()
-        print(f"Method: {method_name}\n\t{method_desc}")
+        logger.debug(f"Method: {method_name}\n\t{method_desc}")
 
         method_dict = {
             'name': method_name,
@@ -111,8 +111,6 @@ def _parse_class(html: str):
         parameters_h5 = h5.find_next_sibling('h5')
         params_list = []
 
-        
-        
         if parameters_h5 and 'Parameters' in parameters_h5.text:
             method_dict['params'] = []
             parameters_table = parameters_h5.find_next_sibling(
@@ -136,10 +134,12 @@ def _parse_class(html: str):
                     'desc': param_desc,
                 }
                 method_dict['params'].append(param_dict)
-                print(f"Parameter: {param_name} {param_type} {param_desc}")
+                logger.debug(
+                    f"Parameter: {param_name} {param_type} {param_desc}")
                 param_object_schema_tbody = description_td.find('tbody')
                 if param_object_schema_tbody:
-                    param_dict['object_schema'] = _parse_schema_table(param_object_schema_tbody)
+                    param_dict['object_schema'] = _parse_schema_table(
+                        param_object_schema_tbody)
     return class_data
 
 
@@ -154,4 +154,4 @@ if __name__ == "__main__":
         class_data.update(_parse_class(class_html))
 
     for class_data in classes:
-        print(json5.dumps(class_data, indent=4))
+        logger.debug(json5.dumps(class_data, indent=4))
