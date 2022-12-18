@@ -1,5 +1,5 @@
-declare type PermanentFile = FileWrapper;
-declare type TemporaryFile = FileWrapper;
+declare class PermanentFile extends FileWrapper {}
+declare class TemporaryFile extends FileWrapper {}
 
 /**
  * scripting object to a sound column... Allow object oriented object interaction with sound sequence.

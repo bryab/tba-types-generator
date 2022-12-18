@@ -92,7 +92,12 @@ def get_all_classes_with_overrides(host, version_num):
     for data in get_all_classes(host, version_num):
         if data['name'] in override_data['classes']:
             override = override_data['classes'][data['name']]
-            data.update(override)
+            for key, val in override.items():
+                if key == 'add_slots':
+                    for slot in val:
+                        data['slots'].append(slot)
+                else:
+                    data[key] = val
             logger.debug(f"Applying override: {override}")
 
         for slot in data['slots']:

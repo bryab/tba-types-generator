@@ -1,5 +1,50 @@
 {
   "classes": {
+    "ScriptManager": {
+      "add_slots": [
+        {
+          "name": "addMenuItem",
+          "type": "",
+          "params": [
+            {
+              "name": "arg",
+              "type": "Object",
+              "object_schema": [
+                {
+                  "name": "id",
+                  "type": "string",
+                  "desc": "The action uniqueId. Is is recommended to use reverse DNS notation."
+                },
+                {
+                  "name": "text",
+                  "type": "string",
+                  "desc": "The action label."
+                },
+                {
+                  "name": "action",
+                  "type": "string",
+                  "desc": "The action id if the action was added using ScriptManager.addAction or the name of a function in the current file or using the syntax: functionName in file.js."
+                },
+                {
+                  "name": "icon",
+                  "type": "string",
+                  "desc": "The icon for the action"
+                },
+                {
+                  "name": "targetMenuId",
+                  "type": "string"
+                },
+                {
+                  "name": "shortcut",
+                  "type": "string",
+                  "desc": "The shortcut id that can trigger this action."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
     "Drawing": {
       "is_namespace": true
     },
@@ -22,7 +67,7 @@
       "params": [
         {
           "name": "action",
-          "type": "",
+          "type": "Object",
           "object_schema": [
             {
               "name": "id",
@@ -36,7 +81,8 @@
             },
             {
               "name": "action",
-              "type": "string"
+              "type": "string",
+              "desc": "The action id if the action was added using ScriptManager.addAction or the name of a function in the current file or using the syntax: functionName in file.js."
             },
             {
               "name": "longDesc",
@@ -89,6 +135,10 @@
     "objectName": {
       "class_name": "Process",
       "invalid": true
+    },
+    "type": {
+      "class_name": "column",
+      "type": "ColumnType"
     }
   }
 }

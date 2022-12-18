@@ -7,12 +7,17 @@ SBPRO_VERSIONS = [6, 7, 20, 22]
 
 
 def generate_all():
-    for version_num in HARMONY_VERSIONS:
-        host = 'harmony'
-        generate(host, version_num)
+    generate_host("harmony")
+    generate_host("storyboardpro")
 
-    for version_num in SBPRO_VERSIONS:
-        host = 'storyboardpro'
+
+def generate_host(host):
+    if host == "harmony":
+        version_nums = HARMONY_VERSIONS
+    else:
+        version_nums = SBPRO_VERSIONS
+
+    for version_num in version_nums:
         generate(host, version_num)
 
 
@@ -25,7 +30,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
     logging.basicConfig(level=logging.DEBUG)
     # generate_all()
-    if args.host and args.version:
-        generate(args.host, args.version)
+    if args.host:
+        if args.version:
+            generate(args.host, args.version)
+        else:
+            generate_host(args.host)
     elif not (args.host or args.version):
         generate_all()
