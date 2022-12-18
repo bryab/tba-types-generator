@@ -20,9 +20,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # option that takes a value
     parser.add_argument(
-        '--host', choices=['harmony', 'storyboardpro'], required=True)
-    parser.add_argument('--version', type=int, required=True)
+        '--host', choices=['harmony', 'storyboardpro'])
+    parser.add_argument('--version', type=int)
     args = parser.parse_args()
     logging.basicConfig(level=logging.DEBUG)
     # generate_all()
-    generate(args.host, args.version)
+    if args.host and args.version:
+        generate(args.host, args.version)
+    elif not (args.host or args.version):
+        generate_all()

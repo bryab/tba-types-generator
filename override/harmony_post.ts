@@ -1,3 +1,6 @@
+declare type PermanentFile = FileWrapper;
+declare type TemporaryFile = FileWrapper;
+
 /**
  * scripting object to a sound column... Allow object oriented object interaction with sound sequence.
  * In Harmony, this object is created by the global scripting interface column.getSoundColumn(
@@ -8,7 +11,7 @@
  * modification to the sound column.
  * {@link https://docs.toonboom.com/help/storyboard-pro-7/storyboard/scripting/reference/classsoundColumnInterface.html}
  */
- declare class soundColumnInterface extends QObject {
+declare class soundColumnInterface extends QObject {
   /**
    * @returns {string}
    */
@@ -117,49 +120,58 @@ declare class soundSequenceInterface extends QObject {
   // /* Invalid - Duplicate property name */ stopTime: float;
 }
 
-
 declare class MC_DragContext extends QObject {}
 
 /**
  * Helpful custom interfaces below
  */
- 
- /**
-  * Column Type as returned by column.type()
-  */
- declare type ColumnType = "DRAWING" | "SOUND" | "3DPATH" | "BEZIER" | "EASE" | "EXPR" | "TIMING" | "QUATERNION" | "QUATERNIONPATH" | "ANNOTATION";
- 
- /**
-  * Type name as returned by Attribute.typeName()
-  */
- declare type AttrValueType =
-   | "ALIAS"
-   | "ARRAY_POSITION_2D"
-   | "ARRAY_STRING"
-   | "BOOL"
-   | "COLOR"
-   | "COMPATIBILITY"
-   | "CUSTOM_NAME"
-   | "DOUBLE"
-   | "DOUBLEVB"
-   | "DRAWING"
-   | "ELEMENT"
-   | "ENABLE"
-   | "FILE_EDITOR"
-   | "FILE_LIBRARY"
-   | "GENERIC_ENUM"
-   | "HSL"
-   | "HUE_RANGE"
-   | "INT"
-   | "LOCKED"
-   | "PATH_3D"
-   | "POINT_2D"
-   | "POSITION_2D"
-   | "POSITION_3D"
-   | "PUSH_BUTTON"
-   | "QUATERNION_PATH"
-   | "ROTATION_3D"
-   | "SCALE_3D"
-   | "SIMPLE_BEZIER"
-   | "STRING"
-   | "TIMING";
+
+/**
+ * Column Type as returned by column.type()
+ */
+declare type ColumnType =
+  | "DRAWING"
+  | "SOUND"
+  | "3DPATH"
+  | "BEZIER"
+  | "EASE"
+  | "EXPR"
+  | "TIMING"
+  | "QUATERNION"
+  | "QUATERNIONPATH"
+  | "ANNOTATION";
+
+/**
+ * Type name as returned by Attribute.typeName()
+ */
+declare type AttrValueType =
+  | "ALIAS"
+  | "ARRAY_POSITION_2D"
+  | "ARRAY_STRING"
+  | "BOOL"
+  | "COLOR"
+  | "COMPATIBILITY"
+  | "CUSTOM_NAME"
+  | "DOUBLE"
+  | "DOUBLEVB"
+  | "DRAWING"
+  | "ELEMENT"
+  | "ENABLE"
+  | "FILE_EDITOR"
+  | "FILE_LIBRARY"
+  | "GENERIC_ENUM"
+  | "HSL"
+  | "HUE_RANGE"
+  | "INT"
+  | "LOCKED"
+  | "PATH_3D"
+  | "POINT_2D"
+  | "POSITION_2D"
+  | "POSITION_3D"
+  | "PUSH_BUTTON"
+  | "QUATERNION_PATH"
+  | "ROTATION_3D"
+  | "SCALE_3D"
+  | "SIMPLE_BEZIER"
+  | "STRING"
+  | "TIMING";

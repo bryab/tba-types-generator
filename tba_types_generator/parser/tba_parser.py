@@ -123,8 +123,7 @@ def iter_class_htmls(host, version_num):
 
     used_names = []  # FIXME: Multiple inheritance???
     logger.debug(f"Loading Class hierarchy from {hierarchy_url}")
-    with open('./override/override.jsonc', 'rb') as f:
-        override_data = json5.load(f)
+
 
     def _iter_leaf(parent_name, items):
         for item in items:
@@ -144,27 +143,6 @@ def iter_class_htmls(host, version_num):
                 data['parent'] = parent_name
                 data['url'] = url
 
-                if data['name'] in override_data['classes']:
-                    override = override_data['classes'][data['name']]
-                    data.update(override)
-                    logger.debug(f"Applying override: {override}")
-
-                for slot in data['slots']:
-                    if slot['name'] in override_data['slots']:
-                        slot_override = override_data['slots'][slot['name']]
-                        for key in slot_override:
-                            if key not in ('params'):
-                                logger.debug("Overriding slot: {0}".format(
-                                    slot_override))
-                                slot[key] = slot_override[key]
-                        if 'params' in slot_override:
-                            for param in slot['params']:
-                                param_override = next(
-                                    (p for p in slot_override['params'] if p['name'] == param['name']), None)
-                                if param_override:
-                                    logger.debug("Overriding param: {}:{}".format(
-                                        slot['name'], param_override))
-                                    param.update(param_override)
                 yield data
             if 'members' in item:
                 yield from _iter_leaf(item['name'], item['members'])

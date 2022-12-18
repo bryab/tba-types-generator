@@ -93,13 +93,21 @@ def is_optional(p):
     return p.get('default', None) or 'default' in p.get('desc', "").lower()
 
 
-def build_type(prop):
+def build_type(prop, as_param=False):
     if 'object_schema' in prop:
         type_str = "{"
         for field_data in prop['object_schema']:
+            # If the type is being returned from a function,
+            # Treat all the fields as required.  If it's as a parameter, make them optional
+            required = not as_param
             if field_data.get('desc', None):
                 type_str += "\n/**\n* {0}\n*/".format(field_data['desc'])
-            type_str += "\n{}:{}".format(field_data['name'],
+                if 'required' in field_data['desc']:
+                    required = True
+            field_name = field_data['name']
+            if not required:
+                field_name += '?'
+            type_str += "\n{}:{}".format(field_name,
                                          convert_type(field_data['type']))
         type_str += "}"
     else:
@@ -124,7 +132,7 @@ def build_params_list(slot):
         param_name = p['name']
         if broke_optional:
             param_name += "?"
-        param_type = build_type(p)
+        param_type = build_type(p, as_param=True)
         params.append((param_name, param_type))
     return params
 
@@ -136,9 +144,11 @@ def write_ts_from_interface(data: dict, f: typing.TextIO):
 
 
 def write_ts_from_class(cls: dict, f: typing.TextIO):
-    is_module = cls.get('is_namespace', False)
-    is_static = not 'parent' in cls or cls['parent'] in [
-        'GlobalObject', 'BAPP_SpecialFolders']
+    is_module = cls.get('is_namespace', False) or cls.get('parent') in [
+        'GlobalObject', 'BAPP_SpecialFolders'] or cls['name'] == 'CELIO'
+    # is_static = not 'parent' in cls or cls['parent'] in [
+    #     'GlobalObject', 'BAPP_SpecialFolders']
+    is_static = False
     has_namespace = cls.get('namespace', None) != None
     if has_namespace:
         f.write('\ndeclare namespace {} {{'.format(cls['namespace']))
@@ -148,7 +158,10 @@ def write_ts_from_class(cls: dict, f: typing.TextIO):
     # is_module = not 'parent' in cls or cls['parent'] in ['GlobalObject', 'BAPP_SpecialFolders']
     write_jsdoc(f, cls)
     if is_module:
-        f.write('\ndeclare module {} {{'.format(cls['name']))
+        if has_namespace:
+            f.write('\nnamespace {} {{'.format(cls['name']))
+        else:
+            f.write('\ndeclare namespace {} {{'.format(cls['name']))
     else:
         # if cls['name'] == 'File':
         #     f.write('\ndeclare interface {} extends {} {{'.format(cls['name'], cls['parent']))
@@ -177,8 +190,8 @@ def write_ts_from_class(cls: dict, f: typing.TextIO):
         sig = ",".join(["{}: {}".format(p[0], p[1]) for p in params])
         type_str = build_type(slot)
         if is_module:
-            f.write('\n{prefix}function {name} ({sig}): {type};\n'.format(
-                prefix=prefix, name=slot['name'], sig=sig, type=type_str))
+            f.write('\nfunction {name} ({sig}): {type};\n'.format(
+                name=slot['name'], sig=sig, type=type_str))
         else:
             if slot['name'] == cls['name']:
                 f.write('\nconstructor ({sig});\n'.format(
@@ -196,8 +209,12 @@ def write_ts_from_class(cls: dict, f: typing.TextIO):
         # type_str = build_type(signal)
         write_jsdoc(f, signal)
         type_str = build_signal_type(signal)
-        f.write('\n{prefix}public {name}: {type};\n'.format(
-            prefix=prefix, name=signal['name'], type=type_str))
+        if is_module:
+            f.write('\nconst {name}: {type};\n'.format(
+                name=signal['name'], type=type_str))
+        else:
+            f.write('\n{prefix}public {name}: {type};\n'.format(
+                prefix=prefix, name=signal['name'], type=type_str))
     for prop in cls.get('props', []):
         prefix = ''
         if prop['name'] in RESERVED_WORDS:

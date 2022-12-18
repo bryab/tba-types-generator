@@ -18,7 +18,7 @@ def get_classes(version_num: int):
     for class_data in classes:
         class_url = f"{base_url}/{class_data['url']}"
         class_html = get_url(class_url)
-        class_data = _parse_class(class_html)
+        class_data.update(_parse_class(class_html))
         class_data['url'] = class_url
         yield class_data
 
@@ -37,14 +37,17 @@ def _parse_index(html: str):
 
     classes = []
     for h3 in nav.find_all('h3'):
-        if not h3.text in ('Classes', 'Modules'):
+        category = h3.text
+        if not category in ('Classes', 'Modules'):
             continue
         ul = h3.find_next_sibling('ul')
         for li in ul.find_all('li', recursive=False):
             a = li.find('a')
             class_name = a.text.strip()
             class_url = a['href']
-            classes.append(dict(name=class_name, url=class_url))
+            class_data = dict(name=class_name, url=class_url)
+            class_data['is_namespace'] = category == 'Modules'
+            classes.append(class_data)
             logger.debug(f"{class_name}: {class_url}")
            # methods_ul = li.find('ul', {'class': 'slots'})
     return classes
@@ -68,9 +71,7 @@ def _parse_type(txt: str):
         return "any[]"
     if txt == "function":
         return "(...args: any[]) => any"
-    if txt == "boolean | function":
-        return "boolean | (...args: any[]) => boolean"
-    assert not "boolean" in txt
+    # assert not "boolean" in txt
     # FIXME: Too lazy to write a proper parser; just check for 2d array
     match = re.search(r"Array\.\<Array\.\<(.+?)\>\>", txt)
     if match:
@@ -81,6 +82,8 @@ def _parse_type(txt: str):
     match = re.search(r"Object\.\<(.+?), (.+?)>", txt)
     if match:
         return f"{{[key: {match.group(1)}] : {match.group(2)}}}"
+    if txt == "boolean\n|\n\nfunction":
+        return "boolean | ((...args: any[]) => boolean)"
     return txt
 
 
@@ -155,55 +158,61 @@ def _parse_class(html: str):
         }
         class_data['slots'].append(method_dict)
 
-        h5 = h4.find_next_sibling('h5')
-        example_p = h5.find_next_sibling('p')
-        if example_p:
-            # example_desc = example_p.text
-            example_code_pre = h5.find_next_sibling('pre')
-            method_dict['example'] = example_code_pre.find('code').text
-        parameters_h5 = h5.find_next_sibling('h5')
+        for sibling in h4.next_siblings:
+            if sibling.name == 'h4':
+                break
 
-        if parameters_h5 and 'Parameters' in parameters_h5.text:
-            h5 = parameters_h5
-            parameters_table = parameters_h5.find_next_sibling(
-                'table', {'class': 'params'})
-            parameters_table_body = parameters_table.find(
-                'tbody', recursive=False)
-            for tr in parameters_table_body.find_all('tr', recursive=False):
-                # tmp = list(tr.find_all('td'))
-                name_td = tr.find('td', {'class': 'name'}, recursive=False)
-                type_td = tr.find('td', {'class': 'type'}, recursive=False)
-                attr_td = tr.find(
-                    'td', {'class': 'attributes'}, recursive=False)
-                if attr_td:
-                    logger.debug(f"Atr: {attr_td}")
-                description_td = tr.find(
-                    'td', {'class': 'description'}, recursive=False)
-                param_name = name_td.text.strip()
-                param_type = _parse_type(type_td.text.strip())
-                param_desc = description_td.contents[0].text.strip()
-                param_dict = {
-                    'name': param_name,
-                    'type': param_type,
-                    'desc': param_desc,
-                }
-                method_dict['params'].append(param_dict)
-                logger.debug(
-                    f"Parameter: {param_name} {param_type} {param_desc}")
-                param_object_schema_tbody = description_td.find('tbody')
-                if param_object_schema_tbody:
-                    param_dict['object_schema'] = _parse_schema_table(
-                        param_object_schema_tbody)
-
-        return_h5 = h5.find_next_sibling('h5')
-        if return_h5 and 'Returns' in return_h5.text:
-            dl = return_h5.find_next_sibling('dl', {'class': 'param-type'})
-            if dl:
-                return_type_span = dl.find('span', {'class': 'param-type'})
-                method_dict['type'] = _parse_type(
-                    return_type_span.text.strip())
-                assert not 'Array' in method_dict['type']
-                assert not 'Object<' in method_dict['type']
+            if sibling.name == 'h5':
+                if 'Example' in sibling.text:
+                    example_p = sibling.find_next_sibling('p')
+                    if example_p:
+                        # example_desc = example_p.text
+                        example_code_pre = example_p.find_next_sibling('pre')
+                        method_dict['example'] = example_code_pre.find(
+                            'code').text
+                elif 'Parameters' in sibling.text:
+                    parameters_table = sibling.find_next_sibling(
+                        'table', {'class': 'params'})
+                    parameters_table_body = parameters_table.find(
+                        'tbody', recursive=False)
+                    for tr in parameters_table_body.find_all('tr', recursive=False):
+                        # tmp = list(tr.find_all('td'))
+                        name_td = tr.find(
+                            'td', {'class': 'name'}, recursive=False)
+                        type_td = tr.find(
+                            'td', {'class': 'type'}, recursive=False)
+                        attr_td = tr.find(
+                            'td', {'class': 'attributes'}, recursive=False)
+                        if attr_td:
+                            logger.debug(f"Atr: {attr_td}")
+                        description_td = tr.find(
+                            'td', {'class': 'description'}, recursive=False)
+                        param_name = name_td.text.strip()
+                        param_type = _parse_type(type_td.text.strip())
+                        param_desc = description_td.contents[0].text.strip()
+                        param_dict = {
+                            'name': param_name,
+                            'type': param_type,
+                            'desc': param_desc,
+                        }
+                        method_dict['params'].append(param_dict)
+                        logger.debug(
+                            f"Parameter: {param_name} {param_type} {param_desc}")
+                        param_object_schema_tbody = description_td.find(
+                            'tbody')
+                        if param_object_schema_tbody:
+                            param_dict['object_schema'] = _parse_schema_table(
+                                param_object_schema_tbody)
+                elif 'Returns' in sibling.text:
+                    dl = sibling.find_next_sibling(
+                        'dl', {'class': 'param-type'})
+                    if dl:
+                        return_type_span = dl.find(
+                            'span', {'class': 'param-type'})
+                        method_dict['type'] = _parse_type(
+                            return_type_span.text.strip())
+                        assert not 'Array' in method_dict['type']
+                        assert not 'Object<' in method_dict['type']
     return class_data
 
 

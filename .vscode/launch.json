@@ -12,6 +12,14 @@
       "console": "integratedTerminal",
       "justMyCode": true,
       "args": ["--host", "harmony", "--version", "21"]
+    },
+    {
+      "name": "Python: Main ALL",
+      "type": "python",
+      "request": "launch",
+      "program": "generate.py",
+      "console": "integratedTerminal",
+      "justMyCode": true
     }
   ]
 }
