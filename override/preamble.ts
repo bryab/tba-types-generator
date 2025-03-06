@@ -15,3 +15,17 @@ declare type QScriptEngine = any;
 declare type QScriptValue = any;
 declare type DD_DragObject = any;
 declare class UI_DialogController {}
+
+/**
+ * The path to the current .js file being run.
+ * @example
+ * var currentFilePath = __file__; Result: /path/to/file.js
+ */
+declare var __file__: string;
+
+/**
+ * The name of the current .js file being run.
+ * @example
+ * var currentFileName = __FILE__; Result: file.js
+ */
+declare var __FILE__: string;
