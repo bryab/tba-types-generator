@@ -1,6 +1,8 @@
 import logging
 import argparse
-from tba_types_generator import generate
+import os
+from pathlib import Path
+from tba_types_generator import generate, DEFAULT_OUTPUT_DIR
 
 HARMONY_VERSIONS = [15, 16, 17, 20, 21, 22]
 SBPRO_VERSIONS = [6, 7, 20, 22]
@@ -24,10 +26,11 @@ def generate_host(host):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # option that takes a value
-    parser.add_argument(
-        '--host', choices=['harmony', 'storyboardpro'])
-    parser.add_argument('--version', type=int)
+    parser.add_argument("--host", choices=["harmony", "storyboardpro"])
+    parser.add_argument("--version", type=int)
+    parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR, type=Path)
     args = parser.parse_args()
+    os.environ["TBA_TYPES_OUTPUT_DIR"] = str(args.output_dir)
     logging.basicConfig(level=logging.DEBUG)
     # generate_all()
     if args.host:
