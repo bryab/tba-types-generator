@@ -43,8 +43,14 @@ def _load_extra_ts_files():
 
 
 def prettify(filename):
+    import jsbeautifier
+
     logger.info(f"Prettifying {filename}")
-    subprocess.call(["prettier", "--write", filename])
+    with open(filename, "r") as f:
+        old_js = f.read()
+    new_js = jsbeautifier.beautify(old_js)
+    with open(filename, "w") as f:
+        f.write(new_js)
 
 
 def _generate_ts_from_data(
