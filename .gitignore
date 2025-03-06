@@ -4,3 +4,4 @@ venv
 doc-parser-cache
 export
 ts
+dist
