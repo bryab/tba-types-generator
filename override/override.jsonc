@@ -139,6 +139,12 @@
     "type": {
       "class_name": "column",
       "type": "ColumnType"
+    },
+    "attributeFromSubSelectionId": {
+      "type": "Attribute"
+    },
+    "getColorOverride": {
+      "type": "ColorOverride"
     }
   }
 }
