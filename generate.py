@@ -5,7 +5,7 @@ from pathlib import Path
 from tba_types_generator import generate, DEFAULT_OUTPUT_DIR
 
 HARMONY_VERSIONS = [17, 20, 21, 22, 24]
-SBPRO_VERSIONS = [7, 20, 22]
+SBPRO_VERSIONS = [7, 20, 22, 24]
 
 
 def generate_all():
