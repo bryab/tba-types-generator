@@ -43,6 +43,28 @@ def _load_extra_ts_files():
 
 
 def prettify(filename):
+    import sys
+
+    logger.info(f"Prettifying {filename}")
+    if sys.platform == "win32":
+        npx_bin = "C:\\Program Files\\nodejs\\npx.cmd"
+    else:
+        npx_bin = "npx"
+    subprocess.call(
+        [
+            npx_bin,
+            "prettier",
+            "--object-wrap",
+            "collapse",
+            "--trailing-comma",
+            "none",
+            "--write",
+            filename,
+        ]
+    )
+
+
+def prettify_alt(filename):
     import jsbeautifier
 
     logger.info(f"Prettifying {filename}")
