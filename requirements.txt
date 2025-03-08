@@ -1,7 +1,6 @@
-beautifulsoup4==4.11.1
-EditorConfig==0.12.3
-esprima==4.0.1
-jsbeautifier==1.14.7
-json5==0.9.10
-six==1.16.0
-soupsieve==2.3.2.post1
+beautifulsoup4==4.*
+EditorConfig==0.*
+esprima==4.*
+jsbeautifier==1.*
+json5==0.*
+soupsieve==2.*
