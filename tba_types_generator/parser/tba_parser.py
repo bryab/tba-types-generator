@@ -33,6 +33,8 @@ def _group_from_labels(labels):
         return "signals"
     if "friend" in labels:
         return None
+    if "delete" in labels:
+        return None
     raise ValueError(labels)
 
 
@@ -195,7 +197,11 @@ def _clean_function_name(txt):
     elif " " in txt:
         # NOTE: There is a common mistake in the documentation
         # Where the actual field name is accidentally in the type
-        type_name, func_name = tuple(txt.split(" "))
+        try:
+            type_name, func_name = tuple(txt.split(" "))
+        except ValueError:
+            logger.error("Failed to parse %s into tuple", txt)
+            type_name = txt
     else:
         type_name = txt
     return type_name, func_name, keyword
