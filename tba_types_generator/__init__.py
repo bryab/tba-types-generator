@@ -94,7 +94,7 @@ def _generate_ts_from_data(
                 logger.debug(f"Writing Harmony addons for >= 16")
                 ts_file.write("\n")
                 ts_file.write(extra_file_data["preamble_harmony16up"])
-            elif version_num >= 24:
+            if version_num >= 24:
                 logger.debug(f"Writing Harmony addons for >= 24")
                 ts_file.write("\n")
                 ts_file.write(extra_file_data["preamble_harmony24up"])
@@ -145,6 +145,8 @@ def get_all_classes_with_overrides(host, version_num):
     for data in get_all_classes(host, version_num):
         if data["name"] in override_data["classes"]:
             override = override_data["classes"][data["name"]]
+            if "skip" in override:
+                continue
             for key, val in override.items():
                 if key == "add_slots":
                     for slot in val:

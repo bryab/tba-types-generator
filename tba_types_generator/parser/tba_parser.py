@@ -352,6 +352,7 @@ def _find_class_name(soup: BeautifulSoup) -> str:
         .strip()
         .replace("Class Reference", "")
         .replace("Namespace Reference", "")
+        .replace("Struct Reference", "")
         .strip()
     )
 

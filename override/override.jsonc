@@ -1,5 +1,8 @@
 {
   "classes": {
+    "Model3d_ScriptGraphMap": {
+      "skip": true
+    },
     "ScriptManager": {
       "add_slots": [
         {
