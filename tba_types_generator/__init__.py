@@ -158,6 +158,8 @@ def get_all_classes_with_overrides(host, version_num):
         for slot in data["slots"]:
             if slot["name"] in override_data["slots"]:
                 slot_override = override_data["slots"][slot["name"]]
+                if "class_name" in slot_override and slot_override["class_name"] != data["name"]:
+                    continue
                 for key in slot_override:
                     if key not in ("params"):
                         logger.debug("Overriding slot: {0}".format(slot_override))
@@ -168,19 +170,11 @@ def get_all_classes_with_overrides(host, version_num):
                     else:
                         for param in slot["params"]:
                             param_override = next(
-                                (
-                                    p
-                                    for p in slot_override["params"]
-                                    if p["name"] == param["name"]
-                                ),
+                                (p for p in slot_override["params"] if p["name"] == param["name"]),
                                 None,
                             )
                             if param_override:
-                                logger.debug(
-                                    "Overriding param: {}:{}".format(
-                                        slot["name"], param_override
-                                    )
-                                )
+                                logger.debug("Overriding param: {}:{}".format(slot["name"], param_override))
                                 param.update(param_override)
         yield data
 
