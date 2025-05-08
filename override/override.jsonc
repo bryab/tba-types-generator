@@ -148,6 +148,9 @@
     },
     "getColorOverride": {
       "type": "ColorOverride"
+    },
+    "getMatrix": {
+      "type": "Matrix4x4"
     }
   }
 }
