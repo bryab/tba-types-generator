@@ -1,6 +1,0 @@
-beautifulsoup4==4.*
-EditorConfig==0.*
-esprima==4.*
-jsbeautifier==1.*
-json5==0.*
-soupsieve==2.*

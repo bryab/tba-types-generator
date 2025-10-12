@@ -1,0 +1,13 @@
+[project]
+name = "tba-types-generator"
+version = "0.1.0"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "beautifulsoup4>=4.14.2",
+    "editorconfig>=0.17.1",
+    "esprima>=4.0.1",
+    "jsbeautifier>=1.15.4",
+    "json5>=0.12.1",
+    "soupsieve>=2.8",
+]
