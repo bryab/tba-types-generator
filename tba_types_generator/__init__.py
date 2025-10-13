@@ -151,6 +151,9 @@ def get_all_classes_with_overrides(host, version_num):
                 if key == "add_slots":
                     for slot in val:
                         data["slots"].append(slot)
+                elif key == "add_props":
+                    for prop in val:
+                        data["props"].append(prop)
                 else:
                     data[key] = val
             logger.debug(f"Applying override: {override}")
