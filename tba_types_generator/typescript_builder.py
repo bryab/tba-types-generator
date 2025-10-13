@@ -243,6 +243,7 @@ def write_ts_from_class(cls: dict, f: typing.TextIO):
             used_names.append(prop["name"])
         write_jsdoc(f, prop)
         type_str = build_type(prop)
+        is_static = prop.get("is_static", False)
         if is_module:
             f.write(
                 "\n{prefix}var {name}: {type};\n".format(
@@ -252,7 +253,7 @@ def write_ts_from_class(cls: dict, f: typing.TextIO):
         else:
             f.write(
                 "\n{prefix}{static}{name}: {type};\n".format(
-                    prefix=prefix, static=static_str, name=prop["name"], type=type_str
+                    prefix=prefix, static="static " if is_static else "", name=prop["name"], type=type_str
                 )
             )
     if has_namespace:
