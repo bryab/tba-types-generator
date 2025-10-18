@@ -62,6 +62,40 @@
     },
     "Model3d": {
       "parent": null // same as RemoteCmd -- needs investigation
+    },
+    "FileAccess": {
+      "add_props": [
+        {
+          "name": "ReadOnly",
+          "type": "number",
+          "is_static": true,
+        },
+        {
+          "name": "WriteOnly",
+          "type": "number",
+          "is_static": true,
+        },
+        {
+          "name": "ReadWrite",
+          "type": "number",
+          "is_static": true,
+        },
+        {
+          "name": "Append",
+          "type": "number",
+          "is_static": true,
+        },
+        {
+          "name": "Truncate",
+          "type": "number",
+          "is_static": true,
+        },
+        {
+          "name": "Translate",
+          "type": "number",
+          "is_static": true,
+        },
+      ]
     }
   },
   "slots": {
