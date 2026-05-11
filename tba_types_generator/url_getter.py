@@ -1,7 +1,7 @@
-import urllib.request
-import urllib.error
-import os
 import logging
+import os
+import urllib.error
+import urllib.request
 
 logger = logging.getLogger(__name__)
 
@@ -10,11 +10,12 @@ if not os.path.isdir(cache_dir):
     os.mkdir(cache_dir)
 
 
-def get_url(url):
+def get_url(url: str):
     a = url.split("/")
     cache_name = "_".join(a[-5:])
     old_cache_filename = cache_filename = os.path.join(
-        cache_dir, "{}.html".format(cache_name))
+        cache_dir, "{}.html".format(cache_name)
+    )
     if os.path.isfile(old_cache_filename):
         cache_filename = old_cache_filename
     else:

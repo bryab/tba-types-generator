@@ -91,15 +91,15 @@ def _generate_ts_from_data(
         ts_file.write(extra_file_data["preamble"])
         if host == "harmony":
             if version_num >= 16:
-                logger.debug(f"Writing Harmony addons for >= 16")
+                logger.debug("Writing Harmony addons for >= 16")
                 ts_file.write("\n")
                 ts_file.write(extra_file_data["preamble_harmony16up"])
             if version_num >= 24:
-                logger.debug(f"Writing Harmony addons for >= 24")
+                logger.debug("Writing Harmony addons for >= 24")
                 ts_file.write("\n")
                 ts_file.write(extra_file_data["preamble_harmony24up"])
         if host == "storyboardpro":
-            logger.debug(f"Writing addons for Storyboard Pro")
+            logger.debug("Writing addons for Storyboard Pro")
             ts_file.write("\n")
             ts_file.write(extra_file_data["preamble_sbpro"])
         ts_file.write("\n\n\n")

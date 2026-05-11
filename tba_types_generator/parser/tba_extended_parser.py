@@ -1,66 +1,77 @@
+import logging
+import re
 
 from bs4 import BeautifulSoup
-import re
-import json5
+
 from tba_types_generator.url_getter import get_url
-import logging
 
 logger = logging.getLogger(__name__)
-HARMONY_DOC_PAT = "https://docs.toonboom.com/help/harmony-{0}/scripting/extended/index.html"
-HARMONY_DOC_PAT_GLOBALS = "https://docs.toonboom.com/help/harmony-{0}/scripting/extended/global.html"
+HARMONY_DOC_PAT = (
+    "https://docs.toonboom.com/help/harmony-{0}/scripting/extended/index.html"
+)
+HARMONY_DOC_PAT_GLOBALS = (
+    "https://docs.toonboom.com/help/harmony-{0}/scripting/extended/global.html"
+)
 
 
 def get_classes(version_num: int):
     url = HARMONY_DOC_PAT.format(version_num)
-    base_url = '/'.join(url.split('/')[:-1])
+    base_url = "/".join(url.split("/")[:-1])
     html = get_url(url)
+    assert html
     classes = _parse_index(html)
     for class_data in classes:
         class_url = f"{base_url}/{class_data['url']}"
         class_html = get_url(class_url)
+        assert class_html
         class_data.update(_parse_class(class_html))
-        class_data['url'] = class_url
+        class_data["url"] = class_url
         yield class_data
 
 
 def get_globals(version_num: int):
     url = HARMONY_DOC_PAT_GLOBALS.format(version_num)
     html = get_url(url)
+    assert html
     harmony_globals = _parse_globals(html)
     return harmony_globals
 
 
 def _parse_index(html: str):
-    soup = BeautifulSoup(html, 'html.parser')
+    soup = BeautifulSoup(html, "html.parser")
 
-    nav = soup.find('nav')
+    nav = soup.find("nav")
+    assert nav
 
     classes = []
-    for h3 in nav.find_all('h3'):
+    for h3 in nav.find_all("h3"):
         category = h3.text
-        if not category in ('Classes', 'Modules'):
+        if category not in ("Classes", "Modules"):
             continue
-        ul = h3.find_next_sibling('ul')
-        for li in ul.find_all('li', recursive=False):
-            a = li.find('a')
+        ul = h3.find_next_sibling("ul")
+        assert ul
+        for li in ul.find_all("li", recursive=False):
+            a = li.find("a")
+            assert a
             class_name = a.text.strip()
-            class_url = a['href']
+            class_url = a["href"]
             class_data = dict(name=class_name, url=class_url)
-            class_data['is_namespace'] = category == 'Modules'
+            class_data["is_namespace"] = category == "Modules"
             classes.append(class_data)
             logger.debug(f"{class_name}: {class_url}")
-           # methods_ul = li.find('ul', {'class': 'slots'})
+        # methods_ul = li.find('ul', {'class': 'slots'})
     return classes
 
 
 def _parse_keyword(txt: str):
     if not txt:
         return ""
-    return re.search(r"\((.+)\)", txt).group(1)
+    return re.search(r"\((.+)\)", txt).group(1)  # type: ignore
 
 
 def _parse_method_name(txt: str):
     return txt.split(" ").pop()
+
 
 # def _parse_signature(txt: str):
 #     return
@@ -89,13 +100,11 @@ def _parse_type(txt: str):
 
 def _parse_schema_table(tbody):
     fields = []
-    for tr in tbody.find_all('tr', recursive=False):
-        name_td = tr.find('td', {'class': 'name'}, recursive=False)
-        type_td = tr.find('td', {'class': 'type'}, recursive=False)
-        attr_td = tr.find(
-            'td', {'class': 'attributes'}, recursive=False)
-        description_td = tr.find(
-            'td', {'class': 'description'}, recursive=False)
+    for tr in tbody.find_all("tr", recursive=False):
+        name_td = tr.find("td", {"class": "name"}, recursive=False)
+        type_td = tr.find("td", {"class": "type"}, recursive=False)
+        tr.find("td", {"class": "attributes"}, recursive=False)
+        description_td = tr.find("td", {"class": "description"}, recursive=False)
         field_name = name_td.text.strip()
         field_type = _parse_type(type_td.text.strip())
         try:
@@ -103,139 +112,143 @@ def _parse_schema_table(tbody):
         except IndexError:
             field_desc = ""
 
-        field_dict = {
-            'name': field_name,
-            'type': field_type,
-            'desc': field_desc
-        }
+        field_dict = {"name": field_name, "type": field_type, "desc": field_desc}
         fields.append(field_dict)
-        sub_tbody = description_td.find('tbody')
+        sub_tbody = description_td.find("tbody")
         if sub_tbody:
-            field_dict['object_schema'] = _parse_schema_table(sub_tbody)
+            field_dict["object_schema"] = _parse_schema_table(sub_tbody)
     return fields
 
 
 def _parse_class(html: str):
-    class_data = {
-        'slots': [],
-        'example': "",
-        'desc': ""
-    }
-    soup = BeautifulSoup(html, 'html.parser')
-    title_h1 = soup.find('h1', {'class': 'page-title'})
+    class_data = {"slots": [], "example": "", "desc": ""}
+    soup = BeautifulSoup(html, "html.parser")
+    title_h1 = soup.find("h1", {"class": "page-title"})
+    assert title_h1
     class_name = title_h1.text.strip()
     if "/" in class_name:
-        class_data['namespace'], class_data['name'] = tuple(
-            class_name.split("/"))
+        class_data["namespace"], class_data["name"] = tuple(class_name.split("/"))
     else:
-        class_data['name'] = class_name
-    article = soup.find('article')
+        class_data["name"] = class_name
+    article = soup.find("article")
+    assert article
     container_overview = article.find(
-        'div', {'class': 'container-overview'}, recursive=False)
-    class_desc_div = container_overview.find('div', {'class': 'description'})
-    class_data['desc'] = class_desc_div.text
+        "div", {"class": "container-overview"}, recursive=False
+    )
+    assert container_overview
+    class_desc_div = container_overview.find("div", {"class": "description"})
+    assert class_desc_div
+    class_data["desc"] = class_desc_div.text
 
-    for h4 in article.find_all('h4', {'class': 'name'}):
-        method_id = h4['id']
+    for h4 in article.find_all("h4", {"class": "name"}):
+        h4["id"]
         method_desc = ""
         # method_name = h4.text
-        method_keyword, method_name, _, _ = tuple(
-            (h.text.strip() for h in h4.contents))
+        method_keyword, method_name, _, _ = tuple((h.text.strip() for h in h4.contents))
         method_keyword = _parse_keyword(method_keyword)
         method_name = _parse_method_name(method_name)
         logger.debug(f"Keyword: {method_keyword}, Name: {method_name}")
-        method_desc_div = h4.find_next_sibling('div', {'class': 'description'})
+        method_desc_div = h4.find_next_sibling("div", {"class": "description"})
         if method_desc_div:
             method_desc = method_desc_div.text.strip()
         logger.debug(f"Method: {method_name}\n\t{method_desc}")
 
         method_dict = {
-            'name': method_name,
-            'keyword': method_keyword,
-            'desc': method_desc,
-            'params': [],
-            'type': ""
+            "name": method_name,
+            "keyword": method_keyword,
+            "desc": method_desc,
+            "params": [],
+            "type": "",
         }
-        class_data['slots'].append(method_dict)
+        class_data["slots"].append(method_dict)
 
         for sibling in h4.next_siblings:
-            if sibling.name == 'h4':
+            if sibling.name == "h4":  # pyright: ignore[reportAttributeAccessIssue]
                 break
 
-            if sibling.name == 'h5':
-                if 'Example' in sibling.text:
-                    example_p = sibling.find_next_sibling('p')
+            if sibling.name == "h5":  # pyright: ignore[reportAttributeAccessIssue]
+                if "Example" in sibling.text:
+                    example_p = sibling.find_next_sibling("p")
                     if example_p:
                         # example_desc = example_p.text
-                        example_code_pre = example_p.find_next_sibling('pre')
-                        method_dict['example'] = example_code_pre.find(
-                            'code').text
-                elif 'Parameters' in sibling.text:
+                        example_code_pre = example_p.find_next_sibling("pre")
+                        assert example_code_pre
+                        method_dict["example"] = example_code_pre.find("code").text  # pyright: ignore[reportOptionalMemberAccess]
+                elif "Parameters" in sibling.text:
                     parameters_table = sibling.find_next_sibling(
-                        'table', {'class': 'params'})
+                        "table", {"class": "params"}
+                    )
+                    assert parameters_table
                     parameters_table_body = parameters_table.find(
-                        'tbody', recursive=False)
-                    for tr in parameters_table_body.find_all('tr', recursive=False):
+                        "tbody", recursive=False
+                    )
+                    assert parameters_table_body
+                    for tr in parameters_table_body.find_all("tr", recursive=False):
                         # tmp = list(tr.find_all('td'))
-                        name_td = tr.find(
-                            'td', {'class': 'name'}, recursive=False)
-                        type_td = tr.find(
-                            'td', {'class': 'type'}, recursive=False)
+                        name_td = tr.find("td", {"class": "name"}, recursive=False)
+                        type_td = tr.find("td", {"class": "type"}, recursive=False)
                         attr_td = tr.find(
-                            'td', {'class': 'attributes'}, recursive=False)
+                            "td", {"class": "attributes"}, recursive=False
+                        )
                         if attr_td:
                             logger.debug(f"Atr: {attr_td}")
                         description_td = tr.find(
-                            'td', {'class': 'description'}, recursive=False)
+                            "td", {"class": "description"}, recursive=False
+                        )
+                        assert name_td
+                        assert type_td
+                        assert description_td
                         param_name = name_td.text.strip()
                         param_type = _parse_type(type_td.text.strip())
                         param_desc = description_td.contents[0].text.strip()
                         param_dict = {
-                            'name': param_name,
-                            'type': param_type,
-                            'desc': param_desc,
+                            "name": param_name,
+                            "type": param_type,
+                            "desc": param_desc,
                         }
-                        method_dict['params'].append(param_dict)
+                        method_dict["params"].append(param_dict)
                         logger.debug(
-                            f"Parameter: {param_name} {param_type} {param_desc}")
-                        param_object_schema_tbody = description_td.find(
-                            'tbody')
+                            f"Parameter: {param_name} {param_type} {param_desc}"
+                        )
+                        param_object_schema_tbody = description_td.find("tbody")
                         if param_object_schema_tbody:
-                            param_dict['object_schema'] = _parse_schema_table(
-                                param_object_schema_tbody)
-                elif 'Returns' in sibling.text:
-                    dl = sibling.find_next_sibling(
-                        'dl', {'class': 'param-type'})
+                            param_dict["object_schema"] = _parse_schema_table(
+                                param_object_schema_tbody
+                            )
+                elif "Returns" in sibling.text:
+                    dl = sibling.find_next_sibling("dl", {"class": "param-type"})
                     if dl:
-                        return_type_span = dl.find(
-                            'span', {'class': 'param-type'})
-                        method_dict['type'] = _parse_type(
-                            return_type_span.text.strip())
-                        assert not 'Array' in method_dict['type']
-                        assert not 'Object<' in method_dict['type']
+                        return_type_span = dl.find("span", {"class": "param-type"})
+                        assert return_type_span
+                        method_dict["type"] = _parse_type(return_type_span.text.strip())
+                        assert "Array" not in method_dict["type"]
+                        assert "Object<" not in method_dict["type"]
     return class_data
 
 
 def _parse_globals(html: str):
     """
-        Only deals with interfaces
+    Only deals with interfaces
     """
-    soup = BeautifulSoup(html, 'html.parser')
+    soup = BeautifulSoup(html, "html.parser")
     harmony_globals = []
-    article = soup.find('article')
-
-    for h4 in article.find_all('h4', {'class': 'name'}):
+    article = soup.find("article")
+    assert article
+    for h4 in article.find_all("h4", {"class": "name"}):
         global_name = h4.text.strip()
-        props_table = h4.find_next_sibling('table')
-        tbody = props_table.find('tbody')
+        props_table = h4.find_next_sibling("table")
+        assert props_table
+        tbody = props_table.find("tbody")
         schema = _parse_schema_table(tbody)
 
-        desc_div = props_table.find_next_sibling(
-            'div', {'class': 'description'})
-        harmony_globals.append({
-            'name': global_name,
-            'object_schema': schema,
-            'desc': desc_div.text.strip()
-        })
+        desc_div = props_table.find_next_sibling("div", {"class": "description"})
+        assert desc_div
+        harmony_globals.append(
+            {
+                "name": global_name,
+                "object_schema": schema,
+                "desc": desc_div.text.strip(),
+            }
+        )
 
     return harmony_globals

@@ -1,14 +1,14 @@
+import re
 import textwrap
 import typing
-import re
 
 MAX_WIDTH = 100
 RESERVED_WORDS = ["void"]
 
 
-def _convert_single_type(type_name):
+def _convert_single_type(type_name: str):
     # Cleanup whitespace and remove pointer/reference symbols
-    type_name = re.sub("[\*&]", "", type_name)
+    type_name = re.sub(r"[\*&]", "", type_name)
     # FIXME: May want static (but is not part of type in TS)
     type_name = type_name.replace("virtual", "").replace("static", "")
     type_name = type_name.strip()
@@ -27,7 +27,7 @@ def _convert_single_type(type_name):
     return type_name
 
 
-def convert_type(type_name):
+def convert_type(type_name: str):
     if " or " in type_name:
         types = [t.strip() for t in type_name.split(" or ")]
     else:
@@ -39,9 +39,9 @@ def convert_type(type_name):
         return "|".join(types)
 
 
-def convert_desc(desc):
-    desc = desc.split("\n")
-    new_desc = []
+def convert_desc(desc_inp: str):
+    desc = desc_inp.split("\n")
+    new_desc: list[str] = []
     for line in desc:
         line = line.strip()
         if line:
@@ -52,11 +52,11 @@ def convert_desc(desc):
 VALUE_LITERAL_MAP = {"QScriptValue()": "{}", "String()": '""'}
 
 
-def convert_value(value):
+def convert_value(value: typing.Any):
     return VALUE_LITERAL_MAP.get(value, value)
 
 
-def write_jsdoc(f, obj):
+def write_jsdoc(f: typing.TextIO, obj: dict[str, typing.Any]):
     f.write("\n/**")
     # f.write("\n* {}".format(obj['name']))
     if "desc" in obj:
@@ -85,11 +85,11 @@ def write_jsdoc(f, obj):
     f.write("\n*/")
 
 
-def is_optional(p):
+def is_optional(p: dict[str, typing.Any]):
     return p.get("default", None) or "default" in p.get("desc", "").lower()
 
 
-def build_type(prop, as_param=False):
+def build_type(prop: dict[str, typing.Any], as_param: bool = False):
     if "object_schema" in prop:
         type_str = "{"
         for field_data in prop["object_schema"]:
@@ -110,15 +110,15 @@ def build_type(prop, as_param=False):
     return type_str
 
 
-def build_signal_type(signal):
+def build_signal_type(signal: dict[str, typing.Any]):
     params = build_params_list(signal)
     sig = ",".join(["{}: {}".format(s[0], s[1]) for s in params])
     type_str = build_type(signal)
     return "QSignal<({0}) => {1}>".format(sig, type_str)
 
 
-def build_params_list(slot):
-    params = []
+def build_params_list(slot: dict[str, typing.Any]):
+    params: list[tuple[str, str]] = []
     broke_optional = False
     for p in slot["params"]:
         if not broke_optional:
@@ -132,13 +132,13 @@ def build_params_list(slot):
     return params
 
 
-def write_ts_from_interface(data: dict, f: typing.TextIO):
+def write_ts_from_interface(data: dict[str, typing.Any], f: typing.TextIO):
     type_str = build_type(data)
     write_jsdoc(f, data)
     f.write(f"\ndeclare interface {data['name']} {type_str}")
 
 
-def write_ts_from_class(cls: dict, f: typing.TextIO):
+def write_ts_from_class(cls: dict[str, typing.Any], f: typing.TextIO):
     is_module = (
         cls.get("is_namespace", False)
         or cls.get("parent") in ["GlobalObject", "BAPP_SpecialFolders"]
@@ -147,7 +147,7 @@ def write_ts_from_class(cls: dict, f: typing.TextIO):
     # is_static = not 'parent' in cls or cls['parent'] in [
     #     'GlobalObject', 'BAPP_SpecialFolders']
     is_static = False
-    has_namespace = cls.get("namespace", None) != None
+    has_namespace = cls.get("namespace", None) is not None
     if has_namespace:
         f.write("\ndeclare namespace {} {{".format(cls["namespace"]))
     static_str = ""
@@ -175,12 +175,12 @@ def write_ts_from_class(cls: dict, f: typing.TextIO):
             )
         else:
             f.write("\n{}class {} {{".format(declare_prefix, cls["name"]))
-    used_names = []
+    used_names: list[str] = []
     for slot in cls["slots"]:
         if slot["name"].startswith("~"):
             continue  # Ignore destructor
         prefix = ""
-        if not slot["name"] in used_names:
+        if slot["name"] not in used_names:
             used_names.append(slot["name"])
         if slot["name"] in RESERVED_WORDS:
             prefix = "// /* Invalid - Reserved word */"
@@ -200,7 +200,7 @@ def write_ts_from_class(cls: dict, f: typing.TextIO):
             if slot["name"] == cls["name"]:
                 f.write(
                     "\nconstructor ({sig});\n".format(
-                        name=slot["name"], sig=sig, type=type_str
+                        sig=sig,
                     )
                 )
             else:
@@ -214,7 +214,7 @@ def write_ts_from_class(cls: dict, f: typing.TextIO):
                     )
                 )
     for signal in cls.get("signals", []):
-        if not signal["name"] in used_names:
+        if signal["name"] not in used_names:
             used_names.append(signal["name"])
         prefix = ""
         if signal["name"] in RESERVED_WORDS:
@@ -239,7 +239,7 @@ def write_ts_from_class(cls: dict, f: typing.TextIO):
             prefix = "// /* Invalid - Reserved word */"
         elif prop["name"] in used_names:
             prefix = "// /* Invalid - Duplicate property name */ "
-        elif not prop["name"] in used_names:
+        elif prop["name"] not in used_names:
             used_names.append(prop["name"])
         write_jsdoc(f, prop)
         type_str = build_type(prop)
@@ -253,7 +253,10 @@ def write_ts_from_class(cls: dict, f: typing.TextIO):
         else:
             f.write(
                 "\n{prefix}{static}{name}: {type};\n".format(
-                    prefix=prefix, static="static " if is_static else "", name=prop["name"], type=type_str
+                    prefix=prefix,
+                    static="static " if is_static else "",
+                    name=prop["name"],
+                    type=type_str,
                 )
             )
     if has_namespace:

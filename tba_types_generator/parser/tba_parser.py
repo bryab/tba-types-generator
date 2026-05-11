@@ -1,12 +1,14 @@
-from bs4 import BeautifulSoup
-import bs4
+import logging
 import re
-import json5
-from tba_types_generator.url_getter import get_url
-from typing import Tuple, Dict, Optional
+import typing
+from typing import Dict, Optional, Tuple
+
+import bs4
 import esprima
 import jsbeautifier
-import logging
+from bs4 import BeautifulSoup
+
+from tba_types_generator.url_getter import get_url
 
 logger = logging.getLogger(__name__)
 
@@ -20,11 +22,11 @@ SBPRO_DOC_PAT = "https://docs.toonboom.com/help/storyboard-pro-{0}/storyboard/sc
 
 
 def _group_from_labels(labels):
-    if any(l in labels for l in ("read", "write")):
+    if any(label in labels for label in ("read", "write")):
         return "props"
     # Note - static may be meaningful here
     if not labels or any(
-        l in labels for l in ("slot", "static", "virtual", "override", "inline")
+        label in labels for label in ("slot", "static", "virtual", "override", "inline")
     ):
         return "slots"
     if "enum" in labels:
@@ -52,6 +54,7 @@ def parse_class_page_detailed(html: str) -> Dict:
     class_data["desc"], class_data["example"] = _find_class_desc(soup)
 
     contents_div = soup.find("div", {"class": "contents"})
+    assert contents_div
 
     groups = {}
 
@@ -63,7 +66,7 @@ def parse_class_page_detailed(html: str) -> Dict:
         if not group_name:  # Skip invalid items (friends for example)
             continue
 
-        if not group_name in groups:
+        if group_name not in groups:
             groups[group_name] = []
         if group_name == "enum":
             func_data = _parse_enum_div(item)
@@ -114,7 +117,7 @@ def get_sbpro_hierarchy_url(version):
 
 
 def get_class_name_from_url(url):
-    return re.search(r"class(\w+)\.html", url.split("/").pop()).group(1)
+    return re.search(r"class(\w+)\.html", url.split("/").pop()).group(1)  # pyright: ignore[reportOptionalMemberAccess]
 
 
 def get_classes(host, version_num):
@@ -189,6 +192,7 @@ def _clean_function_name(txt):
         txt = re.sub(FUNC_KEYWORD_PAT, "", txt.strip()).strip()
         keyword = m.group("keyword")
     m = re.search(FUNC_NAMESPACED_NAME_PAT, txt.strip(), flags=re.I)
+    assert m
     # if m:
     func_name = m.group("name")
     txt = re.sub(FUNC_NAMESPACED_NAME_PAT, "", txt.strip(), flags=re.I).strip()
@@ -237,13 +241,13 @@ def _parse_signature_table(signature_table: bs4.element.Tag) -> Dict:
             param = {}
             param["type"] = _parse_type(td.text)
             td = tr.find("td", {"class": "paramname"})
-
+            assert td
             argument_name, default_value = _clean_argument_name(td.text)
             if argument_name:
                 param["name"] = argument_name
                 if default_value:
                     param["default"] = default_value
-                if not "params" in func_data:
+                if "params" not in func_data:
                     func_data["params"] = []
                 func_data["params"].append(param)
     return func_data
@@ -288,11 +292,11 @@ def _parse_memdoc(doc_div: bs4.element.Tag) -> Dict:
     return func_data
 
 
-def _find_object_schema(tr: bs4.element.Tag) -> Optional[dict]:
+def _find_object_schema(tr: bs4.element.Tag):
     table = tr.find("table", {"class": "markdownTable"})
     if not table:
         return None
-    schema = []
+    schema: list[dict[str, typing.Any]] = []
     for tr in table.find_all("tr"):
         tds = tr.find_all("td", recursive=False)
         if len(tds) != 3:
@@ -306,22 +310,25 @@ def _find_object_schema(tr: bs4.element.Tag) -> Optional[dict]:
 
 def _parse_enum_div(div: bs4.element.Tag) -> Dict:
     enum_data = {"name": None, "fields": []}
-    enum_data.update(_parse_signature_table(div.find("table", {"class": "memname"})))
+    sig_table = div.find("table", {"class": "memname"})
+    assert sig_table
+    enum_data.update(_parse_signature_table(sig_table))
     table = div.find("table", {"class": "fieldtable"})
+    assert table
     for td in table.find_all("td", {"class": "fieldname"}):
         enum_data["fields"].append(td.text.strip())
     return enum_data
 
 
-def _sniff_div_labels(div: bs4.element.Tag) -> str:
+def _sniff_div_labels(div: bs4.element.Tag) -> list[str]:
     """
     Determine whether this div is a slot, signal, prop, enum, etc
     """
     mlabels = div.find_all("span", {"class": "mlabel"})
-    labels = [l.text.strip() for l in mlabels]
+    labels: list[str] = [label.text.strip() for label in mlabels]
     # Note 'enum' is not usually a real label; but i want to know if an item
     # Is an enum so I have to do some digging.
-    if not "enum" in labels:
+    if "enum" not in labels:
         memname = div.find("td", {"class": "memname"})
         if memname and "enum" in memname.text:
             labels.append("enum")
@@ -330,9 +337,12 @@ def _sniff_div_labels(div: bs4.element.Tag) -> str:
 
 def _parse_function_div(div: bs4.element.Tag) -> Dict:
     func_data = {"name": None, "params": []}
-    func_data.update(_parse_signature_table(div.find("table", {"class": "memname"})))
-
-    func_data.update(_parse_memdoc(div.find("div", {"class": "memdoc"})))
+    sig_table = div.find("table", {"class": "memname"})
+    assert sig_table
+    func_data.update(_parse_signature_table(sig_table))
+    table = div.find("div", {"class": "memdoc"})
+    assert table
+    func_data.update(_parse_memdoc(table))
 
     # Join the parameter documenation with the parameter dict
     for param in func_data["params"]:
@@ -347,10 +357,11 @@ def _parse_function_div(div: bs4.element.Tag) -> Dict:
 
 def _find_class_name(soup: BeautifulSoup) -> str:
     div = soup.find("div", attrs={"class": "title"})
+    assert div
     return (
         div.find(text=True)
-        .strip()
-        .replace("Class Reference", "")
+        .strip()  # type: ignore
+        .replace("Class Reference", "")  # type: ignore
         .replace("Namespace Reference", "")
         .replace("Struct Reference", "")
         .strip()
@@ -359,6 +370,7 @@ def _find_class_name(soup: BeautifulSoup) -> str:
 
 def _is_namespace(soup: BeautifulSoup) -> bool:
     div = soup.find("div", attrs={"class": "title"})
+    assert div
     return "Namespace" in div.text
 
 

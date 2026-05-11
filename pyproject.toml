@@ -11,3 +11,8 @@ dependencies = [
     "json5>=0.12.1",
     "soupsieve>=2.8",
 ]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.12",
+]
